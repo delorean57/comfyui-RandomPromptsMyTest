@@ -1,0 +1,21 @@
+# comfyui-RandomPromptsZveroboy
+
+Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)  that fix an existing node [comfyui-dynamicprompts](https://github.com/adieyal/comfyui-dynamicprompts).
+
+![comfy-random](https://github.com/thezveroboy/comfyui-RandomPromptsZveroboy/blob/main/image.jpg)
+
+## Features
+- This node fixes some annoying issues related to incorrect generation of random values on the original node, which made generations monotonous and multiple choices related.
+
+## Requirements
+- Installed ComfyUI.
+
+## Installation
+
+1. **Clone the repository:**
+   Clone this repo into custom_nodes folder
+   ```bash
+   git clone https://github.com/thezveroboy/comfyui-RandomPromptsZveroboy.git
+      ```
+
+
