@@ -5,7 +5,7 @@ Custom node for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)  that fixes
 ![comfy-random](https://github.com/thezveroboy/comfyui-RandomPromptsZveroboy/blob/main/image.jpg)
 
 ## Features
-- This node fixes some annoying issues related to incorrect generation of random values on the original node, which made generations monotonous and multiple choices related.
+- This node finally fixes some annoying issues related to incorrect generation of random values on the original node, which made generations monotonous and multiple choices related.
 - The new node does everything the old one did, but:
    - The choices are truly random
    - There are no weird connections between different choice blocks
