@@ -15,10 +15,9 @@ Custom node for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)  that fixes
 
 ## Installation
 
-1. **Clone the repository:**
-   Clone this repo into custom_nodes folder
+1. Clone this repo into custom_nodes folder
    ```bash
    git clone https://github.com/thezveroboy/comfyui-RandomPromptsZveroboy.git
       ```
-
+2. Run ComfyUI
 
