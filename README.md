@@ -12,6 +12,7 @@ Custom node for [ComfyUI](https://github.com/comfyanonymous/ComfyUI)  that fixes
 
 ## Requirements
 - Installed ComfyUI.
+- Don't forget to put your wildcards in the folder /ComfyUI/custom_nodes/comfyui-RandomPromptsZveroboy/wildcards/
 
 ## Installation
 
