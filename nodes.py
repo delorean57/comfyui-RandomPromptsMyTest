@@ -86,78 +86,78 @@ class RandomPromptsMyTest:
         
         return selected
 
-def _process_choices(self, text: str) -> str:
-    """Main processing function that handles both simple and nested choices,
-    ignoring // line comments and /* block comments */."""
-    
-    # 🔹 1. Eliminar comentarios antes de procesar
-    # Quita comentarios de bloque /* ... */
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-    # Quita comentarios de línea // ...
-    text = re.sub(r"//.*", "", text)
+    def _process_choices(self, text: str) -> str:
+        """Main processing function that handles both simple and nested choices,
+        ignoring // line comments and /* block comments */."""
+        
+        # 🔹 1. Eliminar comentarios antes de procesar
+        # Quita comentarios de bloque /* ... */
+        text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+        # Quita comentarios de línea // ...
+        text = re.sub(r"//.*", "", text)
 
-    result = []
-    i = 0
-    while i < len(text):
-        if text[i] == "{":
-            # Buscar cierre de llaves correspondiente
-            brace_level = 1
-            j = i + 1
-            while j < len(text) and brace_level > 0:
-                if text[j] == "{":
-                    brace_level += 1
-                elif text[j] == "}":
-                    brace_level -= 1
-                j += 1
+        result = []
+        i = 0
+        while i < len(text):
+            if text[i] == "{":
+                # Buscar cierre de llaves correspondiente
+                brace_level = 1
+                j = i + 1
+                while j < len(text) and brace_level > 0:
+                    if text[j] == "{":
+                        brace_level += 1
+                    elif text[j] == "}":
+                        brace_level -= 1
+                    j += 1
 
-            if brace_level == 0:
-                choice_block = text[i:j]
-                inner_content = choice_block[1:-1]
+                if brace_level == 0:
+                    choice_block = text[i:j]
+                    inner_content = choice_block[1:-1]
 
-                # Dividir las opciones por '|', manejando anidamientos
-                choices = []
-                current_choice = []
-                nested_level = 0
+                    # Dividir las opciones por '|', manejando anidamientos
+                    choices = []
+                    current_choice = []
+                    nested_level = 0
 
-                for char in inner_content:
-                    if char == "{":
-                        nested_level += 1
-                        current_choice.append(char)
-                    elif char == "}":
-                        nested_level -= 1
-                        current_choice.append(char)
-                    elif char == "|" and nested_level == 0:
+                    for char in inner_content:
+                        if char == "{":
+                            nested_level += 1
+                            current_choice.append(char)
+                        elif char == "}":
+                            nested_level -= 1
+                            current_choice.append(char)
+                        elif char == "|" and nested_level == 0:
+                            choices.append("".join(current_choice).strip())
+                            current_choice = []
+                        else:
+                            current_choice.append(char)
+
+                    if current_choice:
                         choices.append("".join(current_choice).strip())
-                        current_choice = []
-                    else:
-                        current_choice.append(char)
 
-                if current_choice:
-                    choices.append("".join(current_choice).strip())
+                    # Procesar recursivamente las opciones
+                    processed_choices = []a
+                    for choice in choices:
+                        if "{" in choice:
+                            processed_choices.append(self._process_choices(choice))
+                        else:
+                            processed_choices.append(choice)
 
-                # Procesar recursivamente las opciones
-                processed_choices = []
-                for choice in choices:
-                    if "{" in choice:
-                        processed_choices.append(self._process_choices(choice))
-                    else:
-                        processed_choices.append(choice)
+                    # Seleccionar una opción
+                    if processed_choices:
+                        choice_id = f"block_{i}_{hash(choice_block)}"
+                        selected = self._get_balanced_choice(processed_choices, choice_id)
+                        result.append(selected)
 
-                # Seleccionar una opción
-                if processed_choices:
-                    choice_id = f"block_{i}_{hash(choice_block)}"
-                    selected = self._get_balanced_choice(processed_choices, choice_id)
-                    result.append(selected)
-
-                i = j
+                    i = j
+                else:
+                    result.append(text[i])
+                    i += 1
             else:
                 result.append(text[i])
                 i += 1
-        else:
-            result.append(text[i])
-            i += 1
 
-    return "".join(result)
+        return "".join(result)
 
     @classmethod
     def INPUT_TYPES(cls):
