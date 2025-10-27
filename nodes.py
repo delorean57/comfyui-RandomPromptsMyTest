@@ -90,7 +90,7 @@ class RandomPromptsMyTest:
         """Main processing function that handles both simple and nested choices,
         ignoring // line comments and /* block comments */."""
         
-        # 🔹 1. Eliminar comentarios antes de procesar
+        # 1. Eliminar comentarios antes de procesar
         # Quita comentarios de bloque /* ... */
         text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
         # Quita comentarios de línea // ...
@@ -136,7 +136,7 @@ class RandomPromptsMyTest:
                         choices.append("".join(current_choice).strip())
 
                     # Procesar recursivamente las opciones
-                    processed_choices = []a
+                    processed_choices = []
                     for choice in choices:
                         if "{" in choice:
                             processed_choices.append(self._process_choices(choice))
