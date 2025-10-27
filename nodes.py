@@ -210,7 +210,7 @@ def _process_choices(self, text: str) -> str:
             return ("Error in prompt generation",)
 
 NODE_CLASS_MAPPINGS = {
-    "RandomPromptsMyTest": RandomPromptsZveroboy
+    "RandomPromptsMyTest": RandomPromptsMyTest
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
