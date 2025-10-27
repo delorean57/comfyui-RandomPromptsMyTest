@@ -9,7 +9,7 @@ import re
 
 logger = logging.getLogger(__name__)
 
-class RandomPromptsZveroboy:
+class RandomPromptsMyTest:
     """
     Ultimate random prompts node with:
     - Correct nested choices handling
@@ -184,7 +184,7 @@ def _process_choices(self, text: str) -> str:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate"
-    CATEGORY = "Zveroy"
+    CATEGORY = "MyTest"
     OUTPUT_NODE = True
 
     def generate(self, text: str, seed: int, autorefresh: str) -> Tuple[str]:
@@ -210,9 +210,9 @@ def _process_choices(self, text: str) -> str:
             return ("Error in prompt generation",)
 
 NODE_CLASS_MAPPINGS = {
-    "RandomPromptsZveroboy": RandomPromptsZveroboy
+    "RandomPromptsMyTest": RandomPromptsZveroboy
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RandomPromptsZveroboy": "Random Prompts Zveroboy"
+    "RandomPromptsMyTest": "Random Prompts MyTest"
 }
