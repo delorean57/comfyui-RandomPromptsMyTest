@@ -13,9 +13,11 @@ class RandomPromptsMyTest:
     """
     Ultimate random prompts node with:
     - Correct nested choices handling
-    - Balanced random distribution
-    - Wildcards support
-    - Robust error handling
+    - Weighted random choices (e.g. {5::sunny|2::cloudy|1::rainy})
+    - Wildcards support (__animal__)
+    - Balanced random distribution (optional)
+    - Comment removal
+    - Max 3 consecutive blank lines in output
     """
 
     def __init__(self):
@@ -72,35 +74,44 @@ class RandomPromptsMyTest:
         """Reset choice history"""
         self._choice_history = {}
 
-    def _get_balanced_choice(self, choices: list[str], choice_block_id: str) -> str:
-        """Select choice with usage tracking"""
-        if choice_block_id not in self._choice_history:
-            self._choice_history[choice_block_id] = {c: 0 for c in choices}
+    def _get_weighted_choice(self, choices: list[str], choice_block_id: str) -> str:
+        """
+        Selecciona una opción con pesos definidos como:
+        {5::sunny|2::cloudy|1::rainy}
+        """
+        parsed_choices = []
+        weights = []
 
-        usage = self._choice_history[choice_block_id]
-        min_usage = min(usage.values())
-        candidates = [c for c in choices if usage[c] == min_usage]
-        
-        selected = self._random.choice(candidates)
-        usage[selected] += 1
-        
+        for c in choices:
+            # Detectar formato "peso::texto"
+            match = re.match(r"^\s*(\d+(?:\.\d+)?)::(.*)$", c)
+            if match:
+                weight = float(match.group(1))
+                text = match.group(2).strip()
+            else:
+                weight = 1.0
+                text = c.strip()
+
+            parsed_choices.append(text)
+            weights.append(weight)
+
+        # Elegir con probabilidad ponderada
+        selected = self._random.choices(parsed_choices, weights=weights, k=1)[0]
         return selected
 
     def _process_choices(self, text: str) -> str:
         """Main processing function that handles both simple and nested choices,
         ignoring // line comments and /* block comments */."""
         
-        # 1. Eliminar comentarios antes de procesar
-        # Quita comentarios de bloque /* ... */
+        # 1. Eliminar comentarios
         text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-        # Quita comentarios de línea // ...
         text = re.sub(r"//.*", "", text)
 
         result = []
         i = 0
         while i < len(text):
             if text[i] == "{":
-                # Buscar cierre de llaves correspondiente
+                # Buscar cierre correspondiente
                 brace_level = 1
                 j = i + 1
                 while j < len(text) and brace_level > 0:
@@ -135,7 +146,7 @@ class RandomPromptsMyTest:
                     if current_choice:
                         choices.append("".join(current_choice).strip())
 
-                    # Procesar recursivamente las opciones
+                    # Procesar recursivamente
                     processed_choices = []
                     for choice in choices:
                         if "{" in choice:
@@ -143,10 +154,10 @@ class RandomPromptsMyTest:
                         else:
                             processed_choices.append(choice)
 
-                    # Seleccionar una opción
+                    # Seleccionar con pesos
                     if processed_choices:
                         choice_id = f"block_{i}_{hash(choice_block)}"
-                        selected = self._get_balanced_choice(processed_choices, choice_id)
+                        selected = self._get_weighted_choice(processed_choices, choice_id)
                         result.append(selected)
 
                     i = j
@@ -159,13 +170,19 @@ class RandomPromptsMyTest:
 
         return "".join(result)
 
+    def _limit_blank_lines(self, text: str, max_consecutive: int = 3) -> str:
+        """Reduce múltiples líneas en blanco consecutivas al límite dado."""
+        pattern = r"(\n\s*){" + str(max_consecutive + 1) + r",}"
+        replacement = "\n" * max_consecutive
+        return re.sub(pattern, replacement, text)
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "text": ("STRING", {
                     "multiline": True,
-                    "default": "{simple|example} and {nested|{complex|example}}",
+                    "default": "{5::sunny|2::cloudy|1::rainy}",
                     "dynamicPrompts": False,
                 }),
                 "seed": ("INT", {
@@ -198,11 +215,14 @@ class RandomPromptsMyTest:
             self._random.seed(int(time.time() * 1000) % (2**32))
 
         try:
-            # Process wildcards first
+            # Procesar comodines primero
             text = self._process_wildcards(text)
             
-            # Then process choices
+            # Luego procesar elecciones
             result = self._process_choices(text)
+
+            # Limitar líneas en blanco consecutivas
+            result = self._limit_blank_lines(result, max_consecutive=3)
             
             return (result,)
         except Exception as e:
