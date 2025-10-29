@@ -12,12 +12,11 @@ logger = logging.getLogger(__name__)
 class RandomPromptsMyTest:
     """
     Ultimate random prompts node with:
-    - Correct nested choices handling
     - Weighted random choices (e.g. {5::sunny|2::cloudy|1::rainy})
-    - Wildcards support (__animal__)
-    - Balanced random distribution (optional)
+    - Nested choice support
+    - Wildcards (__animal__)
     - Comment removal
-    - Max 3 consecutive blank lines in output
+    - Optional blank line limiter with toggle
     """
 
     def __init__(self):
@@ -28,17 +27,14 @@ class RandomPromptsMyTest:
         self._wildcards_path = self._get_wildcards_path()
 
     def _get_wildcards_path(self) -> Optional[Path]:
-        """Get path to wildcards folder"""
         node_dir = Path(__file__).parent
         wildcards_path = node_dir / "wildcards"
         wildcards_path.mkdir(exist_ok=True)
         return wildcards_path
 
     def _load_wildcard_file(self, wildcard: str) -> list[str]:
-        """Load wildcard file if exists"""
         if not self._wildcards_path:
             return []
-            
         wildcard_file = (self._wildcards_path / f"{wildcard}.txt")
         if wildcard_file.exists():
             try:
@@ -49,41 +45,29 @@ class RandomPromptsMyTest:
         return []
 
     def _process_wildcards(self, text: str) -> str:
-        """Process __wildcard__ syntax"""
         while "__" in text:
             start = text.find("__")
             end = text.find("__", start + 2)
             if end == -1:
                 break
-                
             wildcard_name = text[start+2:end]
-            
             if wildcard_name not in self._wildcards_cache:
                 self._wildcards_cache[wildcard_name] = self._load_wildcard_file(wildcard_name)
-                
             options = self._wildcards_cache[wildcard_name]
             if options:
                 replacement = self._random.choice(options)
                 text = text[:start] + replacement + text[end+2:]
             else:
                 text = text[:start] + wildcard_name + text[end+2:]
-                
         return text
 
     def _reset_history(self):
-        """Reset choice history"""
         self._choice_history = {}
 
     def _get_weighted_choice(self, choices: list[str], choice_block_id: str) -> str:
-        """
-        Selecciona una opción con pesos definidos como:
-        {5::sunny|2::cloudy|1::rainy}
-        """
         parsed_choices = []
         weights = []
-
         for c in choices:
-            # Detectar formato "peso::texto"
             match = re.match(r"^\s*(\d+(?:\.\d+)?)::(.*)$", c)
             if match:
                 weight = float(match.group(1))
@@ -91,27 +75,17 @@ class RandomPromptsMyTest:
             else:
                 weight = 1.0
                 text = c.strip()
-
             parsed_choices.append(text)
             weights.append(weight)
-
-        # Elegir con probabilidad ponderada
-        selected = self._random.choices(parsed_choices, weights=weights, k=1)[0]
-        return selected
+        return self._random.choices(parsed_choices, weights=weights, k=1)[0]
 
     def _process_choices(self, text: str) -> str:
-        """Main processing function that handles both simple and nested choices,
-        ignoring // line comments and /* block comments */."""
-        
-        # 1. Eliminar comentarios
         text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
         text = re.sub(r"//.*", "", text)
-
         result = []
         i = 0
         while i < len(text):
             if text[i] == "{":
-                # Buscar cierre correspondiente
                 brace_level = 1
                 j = i + 1
                 while j < len(text) and brace_level > 0:
@@ -120,46 +94,33 @@ class RandomPromptsMyTest:
                     elif text[j] == "}":
                         brace_level -= 1
                     j += 1
-
                 if brace_level == 0:
                     choice_block = text[i:j]
-                    inner_content = choice_block[1:-1]
-
-                    # Dividir las opciones por '|', manejando anidamientos
+                    inner = choice_block[1:-1]
                     choices = []
-                    current_choice = []
-                    nested_level = 0
-
-                    for char in inner_content:
-                        if char == "{":
-                            nested_level += 1
-                            current_choice.append(char)
-                        elif char == "}":
-                            nested_level -= 1
-                            current_choice.append(char)
-                        elif char == "|" and nested_level == 0:
-                            choices.append("".join(current_choice).strip())
-                            current_choice = []
+                    current = []
+                    nested = 0
+                    for ch in inner:
+                        if ch == "{":
+                            nested += 1
+                            current.append(ch)
+                        elif ch == "}":
+                            nested -= 1
+                            current.append(ch)
+                        elif ch == "|" and nested == 0:
+                            choices.append("".join(current).strip())
+                            current = []
                         else:
-                            current_choice.append(char)
-
-                    if current_choice:
-                        choices.append("".join(current_choice).strip())
-
-                    # Procesar recursivamente
-                    processed_choices = []
-                    for choice in choices:
-                        if "{" in choice:
-                            processed_choices.append(self._process_choices(choice))
-                        else:
-                            processed_choices.append(choice)
-
-                    # Seleccionar con pesos
-                    if processed_choices:
+                            current.append(ch)
+                    if current:
+                        choices.append("".join(current).strip())
+                    processed = []
+                    for c in choices:
+                        processed.append(self._process_choices(c) if "{" in c else c)
+                    if processed:
                         choice_id = f"block_{i}_{hash(choice_block)}"
-                        selected = self._get_weighted_choice(processed_choices, choice_id)
+                        selected = self._get_weighted_choice(processed, choice_id)
                         result.append(selected)
-
                     i = j
                 else:
                     result.append(text[i])
@@ -167,14 +128,11 @@ class RandomPromptsMyTest:
             else:
                 result.append(text[i])
                 i += 1
-
         return "".join(result)
 
     def _limit_blank_lines(self, text: str, max_consecutive: int = 3) -> str:
-        """Reduce múltiples líneas en blanco consecutivas al límite dado."""
         pattern = r"(\n\s*){" + str(max_consecutive + 1) + r",}"
-        replacement = "\n" * max_consecutive
-        return re.sub(pattern, replacement, text)
+        return re.sub(pattern, "\n" * max_consecutive, text)
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -192,6 +150,18 @@ class RandomPromptsMyTest:
                     "step": 1,
                     "display": "number"
                 }),
+                "limit_blank_lines": (["enabled", "disabled"], {
+                    "default": "enabled",
+                    "display": "combo"
+                }),
+                "max_blank_lines": ("INT", {
+                    "default": 3,
+                    "min": 0,
+                    "max": 10,
+                    "step": 1,
+                    "display": "number",
+                    "enabled": lambda inputs: inputs.get("limit_blank_lines", "enabled") == "enabled"
+                }),
                 "autorefresh": (["enabled", "disabled"], {
                     "default": "disabled",
                     "display": "combo"
@@ -204,8 +174,7 @@ class RandomPromptsMyTest:
     CATEGORY = "MyTest"
     OUTPUT_NODE = True
 
-    def generate(self, text: str, seed: int, autorefresh: str) -> Tuple[str]:
-        """Main generation function"""
+    def generate(self, text: str, seed: int, limit_blank_lines: str, max_blank_lines: int, autorefresh: str) -> Tuple[str]:
         if seed > 0:
             if seed != self._last_seed:
                 self._random.seed(seed)
@@ -215,24 +184,17 @@ class RandomPromptsMyTest:
             self._random.seed(int(time.time() * 1000) % (2**32))
 
         try:
-            # Procesar comodines primero
             text = self._process_wildcards(text)
-            
-            # Luego procesar elecciones
             result = self._process_choices(text)
 
-            # Limitar líneas en blanco consecutivas
-            result = self._limit_blank_lines(result, max_consecutive=3)
-            
+            if limit_blank_lines == "enabled":
+                result = self._limit_blank_lines(result, max_consecutive=max_blank_lines)
+
             return (result,)
         except Exception as e:
             logger.error(f"Prompt generation failed: {e}")
             return ("Error in prompt generation",)
 
-NODE_CLASS_MAPPINGS = {
-    "RandomPromptsMyTest": RandomPromptsMyTest
-}
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "RandomPromptsMyTest": "Random Prompts MyTest"
-}
+NODE_CLASS_MAPPINGS = {"RandomPromptsMyTest": RandomPromptsMyTest}
+NODE_DISPLAY_NAME_MAPPINGS = {"RandomPromptsMyTest": "Random Prompts MyTest"}
